@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { Loader2, Music, Quote } from 'lucide-react'
+import { Loader2, Music, Quote, Play, Pause, Volume2 } from 'lucide-react'
 
 // 带情感标签的图片数据库
 const moodImageDatabase = [
@@ -73,14 +73,46 @@ const quoteDatabase = [
 
 // 音乐推荐数据库
 const musicDatabase = [
-  { title: 'Happy - Pharrell Williams', tags: ['快乐', '活力', '积极', '开心'] },
-  { title: 'Someone Like You - Adele', tags: ['忧伤', '思念', '深情'] },
-  { title: 'Weightless - Marconi Union', tags: ['放松', '平静', '舒适'] },
-  { title: 'Eye of the Tiger - Survivor', tags: ['激励', '奋斗', '斗志'] },
-  { title: 'Imagine - John Lennon', tags: ['和平', '希望', '理想'] },
-  { title: 'The Scientist - Coldplay', tags: ['思考', '内省', '沉思'] },
-  { title: 'Dancing Queen - ABBA', tags: ['欢快', '舞蹈', '活力'] },
-  { title: 'La Vie En Rose - Louis Armstrong', tags: ['浪漫', '温馨', '爱情'] },
+  { 
+    title: 'Happy - Pharrell Williams', 
+    tags: ['快乐', '活力', '积极', '开心'],
+    url: 'https://cdn.freesound.org/previews/691/691689_4882664-lq.mp3' // 替换为真实的音乐URL
+  },
+  { 
+    title: 'Someone Like You - Adele', 
+    tags: ['忧伤', '思念', '深情'],
+    url: 'https://cdn.freesound.org/previews/691/691874_14643598-lq.mp3'
+  },
+  { 
+    title: 'Weightless - Marconi Union', 
+    tags: ['放松', '平静', '舒适'],
+    url: 'https://cdn.freesound.org/previews/691/691783_6273090-lq.mp3'
+  },
+  { 
+    title: 'Eye of the Tiger - Survivor', 
+    tags: ['激励', '奋斗', '斗志'],
+    url: 'https://cdn.freesound.org/previews/612/612886_5674468-lq.mp3'
+  },
+  { 
+    title: 'Imagine - John Lennon', 
+    tags: ['和平', '希望', '理想'],
+    url: 'https://cdn.freesound.org/previews/691/691644_5674468-lq.mp3'
+  },
+  { 
+    title: 'The Scientist - Coldplay', 
+    tags: ['思考', '内省', '沉思'],
+    url: 'https://cdn.freesound.org/previews/691/691854_13322361-lq.mp3'
+  },
+  { 
+    title: 'Dancing Queen - ABBA', 
+    tags: ['欢快', '舞蹈', '活力'],
+    url: 'https://cdn.freesound.org/previews/691/691802_13538877-lq.mp3'
+  },
+  { 
+    title: 'La Vie En Rose - Louis Armstrong', 
+    tags: ['浪漫', '温馨', '爱情'],
+    url: 'https://cdn.freesound.org/previews/691/691807_14643598-lq.mp3'
+  },
 ];
 
 export default function Home() {
@@ -90,7 +122,10 @@ export default function Home() {
     images: typeof moodImageDatabase
     quote: string
     music: string
+    musicUrl: string
   }>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // 根据心情文本匹配合适的内容
   const findMatchingContent = (text: string) => {
@@ -158,7 +193,8 @@ export default function Home() {
     return {
       images: resultImages,
       quote: bestQuote.text,
-      music: bestMusic.title
+      music: bestMusic.title,
+      musicUrl: bestMusic.url
     };
   };
 
@@ -174,12 +210,30 @@ export default function Home() {
       // 根据输入的心情匹配内容
       const matchedContent = findMatchingContent(mood);
       setResult(matchedContent);
+      
+      // 停止当前播放的音乐
+      if (audioRef.current) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
     } catch (error) {
       console.error('Error:', error)
     } finally {
       setLoading(false)
     }
   }
+  
+  // 控制音乐播放/暂停
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
 
   return (
     <main className="container mx-auto px-4 py-8 min-h-screen">
@@ -219,18 +273,18 @@ export default function Home() {
           <div className="animate-in fade-in-50 duration-500">
             <h2 className="text-2xl font-semibold mb-4">你的心情板</h2>
             
-            {/* 图片网格 */}
+            {/* 图片网格 - 调整大小确保不会全屏 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {result.images.map((image) => (
                 <Card key={image.id} className="overflow-hidden rounded-xl shadow-md hover:shadow-lg transition-shadow">
-                  <div className="relative h-48">
+                  <div className="relative w-full" style={{ height: '180px' }}>
                     <Image
                       src={image.url}
                       alt={image.alt}
                       fill
-                      style={{ objectFit: "cover" }}
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="rounded-t-xl"
+                      className="rounded-t-xl object-cover"
+                      priority
                     />
                   </div>
                   <div className="p-3 text-sm text-gray-600">{image.alt}</div>
@@ -248,9 +302,41 @@ export default function Home() {
               </Card>
               
               <Card className="p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-                <div className="flex items-start space-x-3">
-                  <Music className="h-5 w-5 text-purple-500 flex-shrink-0 mt-1" />
-                  <p className="text-lg">推荐音乐：{result.music}</p>
+                <div className="flex flex-col space-y-3">
+                  <div className="flex items-start space-x-3">
+                    <Music className="h-5 w-5 text-purple-500 flex-shrink-0 mt-1" />
+                    <p className="text-lg">推荐音乐：{result.music}</p>
+                  </div>
+                  
+                  {/* 音乐播放器 */}
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="rounded-full h-10 w-10"
+                      onClick={togglePlay}
+                    >
+                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    </Button>
+                    <div className="flex-1 bg-gray-200 h-2 rounded-full overflow-hidden dark:bg-gray-700">
+                      <div className="bg-purple-500 h-full rounded-full" style={{ 
+                        width: audioRef.current ? 
+                          `${(audioRef.current.currentTime / audioRef.current.duration) * 100}%` : '0%' 
+                      }}></div>
+                    </div>
+                    <Volume2 className="h-4 w-4 text-gray-500" />
+                  </div>
+                  
+                  {/* 隐藏的音频元素 */}
+                  <audio 
+                    ref={audioRef} 
+                    src={result.musicUrl}
+                    onEnded={() => setIsPlaying(false)}
+                    onTimeUpdate={() => {
+                      // 强制重新渲染以更新进度条
+                      setIsPlaying(isPlaying)
+                    }}
+                  />
                 </div>
               </Card>
             </div>
