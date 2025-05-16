@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -71,47 +71,47 @@ const quoteDatabase = [
   { text: '爱是生命中最强大的力量。', tags: ['爱', '温暖', '力量'] },
 ];
 
-// 音乐推荐数据库
+// 音乐推荐数据库 - 使用浏览器兼容性更好的mp3示例
 const musicDatabase = [
   { 
-    title: 'Happy - Pharrell Williams', 
+    title: 'Happy Piano',
     tags: ['快乐', '活力', '积极', '开心'],
-    url: 'https://cdn.freesound.org/previews/691/691689_4882664-lq.mp3' // 替换为真实的音乐URL
+    url: 'https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3'
   },
   { 
-    title: 'Someone Like You - Adele', 
+    title: 'Sentimental Jazz',
     tags: ['忧伤', '思念', '深情'],
-    url: 'https://cdn.freesound.org/previews/691/691874_14643598-lq.mp3'
+    url: 'https://assets.mixkit.co/music/preview/mixkit-a-very-happy-christmas-897.mp3'
   },
   { 
-    title: 'Weightless - Marconi Union', 
+    title: 'Relaxing Ambient',
     tags: ['放松', '平静', '舒适'],
-    url: 'https://cdn.freesound.org/previews/691/691783_6273090-lq.mp3'
+    url: 'https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3'
   },
   { 
-    title: 'Eye of the Tiger - Survivor', 
+    title: 'Upbeat Rock',
     tags: ['激励', '奋斗', '斗志'],
-    url: 'https://cdn.freesound.org/previews/612/612886_5674468-lq.mp3'
+    url: 'https://assets.mixkit.co/music/preview/mixkit-driving-ambition-32.mp3'
   },
   { 
-    title: 'Imagine - John Lennon', 
+    title: 'Hopeful Acoustic',
     tags: ['和平', '希望', '理想'],
-    url: 'https://cdn.freesound.org/previews/691/691644_5674468-lq.mp3'
+    url: 'https://assets.mixkit.co/music/preview/mixkit-raising-me-higher-34.mp3'
   },
   { 
-    title: 'The Scientist - Coldplay', 
+    title: 'Contemplative Classical',
     tags: ['思考', '内省', '沉思'],
-    url: 'https://cdn.freesound.org/previews/691/691854_13322361-lq.mp3'
+    url: 'https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3'
   },
   { 
-    title: 'Dancing Queen - ABBA', 
+    title: 'Dance Pop',
     tags: ['欢快', '舞蹈', '活力'],
-    url: 'https://cdn.freesound.org/previews/691/691802_13538877-lq.mp3'
+    url: 'https://assets.mixkit.co/music/preview/mixkit-hip-hop-02-738.mp3'
   },
   { 
-    title: 'La Vie En Rose - Louis Armstrong', 
+    title: 'Romantic Strings',
     tags: ['浪漫', '温馨', '爱情'],
-    url: 'https://cdn.freesound.org/previews/691/691807_14643598-lq.mp3'
+    url: 'https://assets.mixkit.co/music/preview/mixkit-getting-started-15.mp3'
   },
 ];
 
@@ -125,7 +125,28 @@ export default function Home() {
     musicUrl: string
   }>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [progress, setProgress] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  // 使用useEffect更新进度条
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const updateProgress = () => {
+      const value = audio.currentTime / (audio.duration || 1);
+      setProgress(value * 100);
+    };
+
+    audio.addEventListener('timeupdate', updateProgress);
+    
+    // 创建AudioContext来确保音频能够播放
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    return () => {
+      audio.removeEventListener('timeupdate', updateProgress);
+    };
+  }, [result]);
 
   // 根据心情文本匹配合适的内容
   const findMatchingContent = (text: string) => {
@@ -215,6 +236,7 @@ export default function Home() {
       if (audioRef.current) {
         audioRef.current.pause();
         setIsPlaying(false);
+        setProgress(0);
       }
     } catch (error) {
       console.error('Error:', error)
@@ -230,116 +252,143 @@ export default function Home() {
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play();
+      // 确保音频已加载
+      audioRef.current.load();
+      // 尝试播放
+      const playPromise = audioRef.current.play();
+      
+      // 处理可能的播放错误
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error("播放失败:", error);
+          // 可能是由于浏览器策略，需要用户交互才能播放
+          alert("请点击播放按钮以播放音乐（浏览器安全策略要求）");
+        });
+      }
     }
     setIsPlaying(!isPlaying);
   };
 
   return (
-    <main className="container mx-auto px-4 py-8 min-h-screen">
+    <main className="container mx-auto px-4 py-8 min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">MoodBoard Me</h1>
-          <p className="text-lg text-muted-foreground">
+          <h1 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">MoodBoard Me</h1>
+          <p className="text-xl text-muted-foreground">
             分享你的心情，让我们为你创造专属的心情板
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            type="text"
-            placeholder="描述你现在的心情..."
-            value={mood}
-            onChange={(e) => setMood(e.target.value)}
-            className="text-lg p-6 rounded-xl shadow-sm"
-          />
-          <Button
-            type="submit"
-            className="w-full py-6 text-lg rounded-xl"
-            disabled={loading || !mood.trim()}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                生成中...
-              </>
-            ) : (
-              '生成心情板'
-            )}
-          </Button>
-        </form>
+        <Card className="p-6 shadow-lg border-t-4 border-blue-500">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">输入你的心情</label>
+            <Input
+              type="text"
+              placeholder="例如：开心、平静、忧郁、思念..."
+              value={mood}
+              onChange={(e) => setMood(e.target.value)}
+              className="text-lg p-6 rounded-xl shadow-sm"
+            />
+            <Button
+              type="submit"
+              className="w-full py-6 text-lg rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 transition-all"
+              disabled={loading || !mood.trim()}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  生成中...
+                </>
+              ) : (
+                '生成心情板'
+              )}
+            </Button>
+          </form>
+        </Card>
 
         {result && (
-          <div className="animate-in fade-in-50 duration-500">
-            <h2 className="text-2xl font-semibold mb-4">你的心情板</h2>
+          <div className="animate-in fade-in-50 duration-500 space-y-8">
+            <h2 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">你的心情板</h2>
+            
+            {/* 引言卡片 - 放在顶部突出显示 */}
+            <Card className="p-8 rounded-xl shadow-lg border-l-4 border-blue-500 bg-white dark:bg-slate-800">
+              <div className="flex items-start space-x-4">
+                <Quote className="h-6 w-6 text-blue-500 flex-shrink-0 mt-1" />
+                <p className="text-xl italic font-medium">{result.quote}</p>
+              </div>
+            </Card>
             
             {/* 图片网格 - 调整大小确保不会全屏 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               {result.images.map((image) => (
-                <Card key={image.id} className="overflow-hidden rounded-xl shadow-md hover:shadow-lg transition-shadow">
-                  <div className="relative w-full" style={{ height: '180px' }}>
+                <Card key={image.id} className="overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                  <div className="relative w-full" style={{ height: '220px' }}>
                     <Image
                       src={image.url}
                       alt={image.alt}
                       fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 33vw"
                       className="rounded-t-xl object-cover"
                       priority
                     />
                   </div>
-                  <div className="p-3 text-sm text-gray-600">{image.alt}</div>
+                  <div className="p-4 text-sm font-medium text-center text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800">
+                    {image.alt}
+                  </div>
                 </Card>
               ))}
             </div>
             
-            {/* 引用和音乐 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-                <div className="flex items-start space-x-3">
-                  <Quote className="h-5 w-5 text-blue-500 flex-shrink-0 mt-1" />
-                  <p className="text-lg italic">{result.quote}</p>
+            {/* 音乐播放器 */}
+            <Card className="p-8 rounded-xl shadow-lg border-l-4 border-purple-500 bg-white dark:bg-slate-800">
+              <div className="flex flex-col space-y-4">
+                <div className="flex items-center space-x-4">
+                  <Music className="h-8 w-8 text-purple-500 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-lg font-semibold">推荐音乐</h3>
+                    <p className="text-xl text-purple-600 dark:text-purple-400">{result.music}</p>
+                  </div>
                 </div>
-              </Card>
-              
-              <Card className="p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-                <div className="flex flex-col space-y-3">
-                  <div className="flex items-start space-x-3">
-                    <Music className="h-5 w-5 text-purple-500 flex-shrink-0 mt-1" />
-                    <p className="text-lg">推荐音乐：{result.music}</p>
+                
+                {/* 增强音乐播放器UI */}
+                <div className="flex items-center space-x-4 bg-gray-100 dark:bg-slate-700 p-4 rounded-xl mt-2">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className={`rounded-full h-12 w-12 ${isPlaying ? 'bg-purple-100 text-purple-600' : 'bg-white text-gray-700'} border-2 hover:bg-purple-100 hover:text-purple-600 transition-all`}
+                    onClick={togglePlay}
+                  >
+                    {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                  </Button>
+                  
+                  <div className="flex-1">
+                    <div className="relative w-full h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                      <div 
+                        className="absolute top-0 left-0 h-full bg-purple-500 rounded-full"
+                        style={{width: `${progress}%`}}
+                      ></div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {isPlaying ? "正在播放..." : "点击播放"}
+                    </div>
                   </div>
                   
-                  {/* 音乐播放器 */}
-                  <div className="flex items-center space-x-2 mt-2">
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className="rounded-full h-10 w-10"
-                      onClick={togglePlay}
-                    >
-                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    </Button>
-                    <div className="flex-1 bg-gray-200 h-2 rounded-full overflow-hidden dark:bg-gray-700">
-                      <div className="bg-purple-500 h-full rounded-full" style={{ 
-                        width: audioRef.current ? 
-                          `${(audioRef.current.currentTime / audioRef.current.duration) * 100}%` : '0%' 
-                      }}></div>
-                    </div>
-                    <Volume2 className="h-4 w-4 text-gray-500" />
-                  </div>
+                  <Volume2 className="h-5 w-5 text-gray-500" />
                   
                   {/* 隐藏的音频元素 */}
                   <audio 
                     ref={audioRef} 
                     src={result.musicUrl}
+                    preload="auto"
                     onEnded={() => setIsPlaying(false)}
-                    onTimeUpdate={() => {
-                      // 强制重新渲染以更新进度条
-                      setIsPlaying(isPlaying)
-                    }}
+                    onError={(e) => console.error("音频加载错误:", e)}
                   />
                 </div>
-              </Card>
-            </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  如果音频没有自动播放，请点击播放按钮手动播放。
+                </p>
+              </div>
+            </Card>
           </div>
         )}
       </div>
